@@ -1,0 +1,22 @@
+# build artifacts
+roms/*.bin
+roms/*.lst
+roms/*.sym
+
+# local toolchain (rebuilt via tools/setup, see README)
+tools/dasm
+tools/ftohex
+tools/dasm-src/
+tools/stella/
+tools/sim2600
+tools/winid
+
+# planos e artefatos de sessao (fora do versionamento)
+specs/
+.superpowers/
+tools/__pycache__/
+
+# editor / OS
+.DS_Store
+.vscode/
+shots/

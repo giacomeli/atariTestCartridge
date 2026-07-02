@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Editor de Pixel Art - TESTBR</title>
+<style>
+  :root {
+    --bg: #1b1d21;
+    --panel: #26292f;
+    --border: #3a3e46;
+    --text: #e8e9eb;
+    --muted: #9aa0a8;
+    --accent: #4a90d9;
+    --warn: #d9784a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; font-weight: 600; }
+  header label { color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  input[type=number], select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 6px;
+  }
+  input[type=number] { width: 60px; }
+  button {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primario { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main {
+    display: flex;
+    gap: 16px;
+    padding: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  #areaCanvas {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+  }
+  canvas { display: block; image-rendering: pixelated; cursor: crosshair; }
+  aside {
+    width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .cartao {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+  }
+  .cartao h2 { font-size: 13px; margin: 0 0 8px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  #paleta { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+  #paleta div {
+    aspect-ratio: 1.4;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid rgba(0,0,0,.35);
+  }
+  #paleta div.ativo { outline: 2px solid #fff; outline-offset: 1px; }
+  #corAtual { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  #amostraCor {
+    width: 42px; height: 30px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  #infoCor { color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  #toolbox { padding: 8px; align-self: flex-start; }
+  #ferramentas { display: grid; grid-template-columns: repeat(2, 34px); gap: 4px; }
+  #ferramentas button {
+    width: 34px; height: 34px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #ferramentas button.ativo {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  #ferramentas svg {
+    width: 18px; height: 18px;
+    fill: none; stroke: currentColor;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  }
+  #opcaoPreencher {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 10px; color: var(--muted); font-size: 12px;
+  }
+  #avisos { font-size: 12.5px; color: var(--muted); max-height: 160px; overflow-y: auto; }
+  #avisos .erro { color: var(--warn); }
+  #avisos .ok { color: #7ec97e; }
+  textarea {
+    width: 100%;
+    height: 90px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    padding: 6px;
+    resize: vertical;
+  }
+  .linhaBotoes { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  footer { padding: 0 16px 16px; color: var(--muted); font-size: 12.5px; max-width: 980px; }
+  kbd {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 0 5px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Editor de Pixel Art - TESTBR</h1>
+  <label>Largura <input type="number" id="inpLargura" min="8" max="48" step="8" value="16"></label>
+  <label>Altura <input type="number" id="inpAltura" min="1" max="64" value="24"></label>
+  <button id="btnRedim">Redimensionar</button>
+  <label>Proporcao
+    <select id="selAspecto">
+      <option value="2">1 linha = 2 scanlines (sprites do TESTBR, ~0.96:1)</option>
+      <option value="1">1 linha = 1 scanline (pixel cru do TIA, ~1.92:1)</option>
+      <option value="q">Quadrada (1:1)</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="chkGrade" checked> Grade</label>
+  <button id="btnDesfazer">Desfazer</button>
+  <button id="btnLimpar">Limpar</button>
+</header>
+
+<main>
+  <div id="toolbox" class="cartao">
+    <div id="ferramentas"></div>
+    <label id="opcaoPreencher"><input type="checkbox" id="chkPreencher"> Preencher formas</label>
+  </div>
+  <div id="areaCanvas"><canvas id="tela"></canvas></div>
+
+  <aside>
+    <div class="cartao">
+      <h2>Paleta NTSC do TIA (128 cores)</h2>
+      <div id="paleta"></div>
+      <div id="corAtual">
+        <div id="amostraCor"></div>
+        <div id="infoCor"></div>
+      </div>
+    </div>
+
+    <div class="cartao">
+      <h2>Validador do TIA (1 cor por metade de 8 colunas por linha)</h2>
+      <div id="avisos"></div>
+    </div>
+
+    <div class="cartao">
+      <h2>ROM (requer "make editor")</h2>
+      <div class="linhaBotoes">
+        <button class="primario" id="btnGravarRom">Gravar na ROM</button>
+        <button id="btnAbrirStella">Abrir no Stella</button>
+      </div>
+      <div id="statusRom"></div>
+    </div>
+
+    <div class="cartao">
+      <h2>Exportar / Importar</h2>
+      <div class="linhaBotoes">
+        <button class="primario" id="btnCopiarJson">Copiar matriz JSON</button>
+        <button id="btnBaixarJson">Baixar JSON</button>
+        <button id="btnDasm">Gerar DASM</button>
+      </div>
+      <textarea id="caixaTexto" placeholder="A matriz JSON aparece aqui. Para importar, cole um JSON e clique em Carregar."></textarea>
+      <div class="linhaBotoes">
+        <button id="btnCarregar">Carregar matriz do texto</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  Ferramentas: lapis <kbd>P</kbd>, lapis espelhado <kbd>V</kbd>, borracha
+  <kbd>E</kbd>, balde <kbd>B</kbd>, conta-gotas <kbd>I</kbd>, linha
+  <kbd>L</kbd>, retangulo <kbd>R</kbd> e elipse <kbd>C</kbd>. Nas formas a
+  previa acompanha o arraste, <kbd>Shift</kbd> restringe a proporcao e
+  <kbd>Esc</kbd> cancela. Em qualquer ferramenta o botao direito apaga e
+  <kbd>Alt</kbd> + clique e conta-gotas. <kbd>Ctrl</kbd>+<kbd>Z</kbd>
+  desfaz. Os valores exportados sao os bytes de cor do TIA (0-254, pares);
+  -1 = transparente. O validador confere a regra dos players: em cada
+  linha, cada grupo de 8 colunas (P0, P1, ...) pode ter apenas UMA cor alem
+  do transparente. O trabalho e salvo automaticamente no navegador.
+</footer>
+
+<script>
+"use strict";
+
+// Paleta NTSC amostrada da renderizacao real do Stella 7.0
+// (tela PALETA do TESTBR). Indice: [matiz 0-15][luminancia 0-7].
+// Valor TIA correspondente: matiz*16 + luminancia*2.
+const PALETA = [
+  ["#000000","#3F3F3E","#646463","#848483","#A2A2A1","#BABAB9","#D2D2D1","#EAEAE9"],
+  ["#3D3D00","#5D5E0A","#7C7B15","#999920","#B4B42A","#CDCD33","#E6E63E","#FDFC48"],
+  ["#712300","#863D0C","#995718","#AD6F26","#BD8632","#CD9B3E","#DCB049","#E9C254"],
+  ["#861500","#9A2F0E","#AE481E","#C0612E","#D1773D","#E08D4D","#EFA25C","#FDB567"],
+  ["#8A0000","#9E1212","#B12827","#C23D3D","#D25150","#E26463","#EF7574","#FD8685"],
+  ["#7A0058","#8D126E","#A02784","#B13B98","#C04EAA","#D061BC","#DD71CC","#EA82DC"],
+  ["#450A77","#5D128F","#7227A4","#883BB9","#9B4ECA","#AE60DC","#BF71EC","#D082FB"],
+  ["#0B1285","#2A1699","#4328AD","#5D3DBF","#7451D0","#8B64DF","#A175EE","#B586FB"],
+  ["#00148A","#11179D","#2429B0","#373DC1","#4951D1","#5B64E0","#6A75EE","#7986FB"],
+  ["#00157D","#123193","#244CA7","#3767BB","#4980CC","#5A97DD","#69AEED","#79C2FB"],
+  ["#002658","#124574","#23618D","#377EA7","#4997BE","#5AB0D4","#6AC7E8","#79DDFB"],
+  ["#003526","#125742","#24755E","#379576","#49B18E","#5BCCA5","#6AE5BB","#7AFDCF"],
+  ["#003900","#125B13","#297927","#3D973C","#51B350","#64CD63","#76E674","#86FD85"],
+  ["#0D3200","#2B5410","#487323","#639337","#7DB049","#95CB59","#ADE569","#C2FD78"],
+  ["#272E00","#444E0F","#626B21","#7E8833","#97A343","#B0BC53","#C7D462","#DDEA70"],
+  ["#3D2301","#5E420D","#7B5F1D","#997B2D","#B4963A","#CDAF4A","#E6C757","#FDDD64"],
+];
+
+const CHAVE_STORAGE = "testbr-pixel-editor";
+const TRANSPARENTE = -1;
+
+let largura = 16, altura = 24;
+let pixels = [];                 // [linha][coluna] = valor TIA ou -1
+let corSelecionada = 0x44;       // vermelho
+let ferramentaAtiva = "lapis";
+let gesto = null;   // { ferramenta, ancora, atual, shift } durante um arraste
+let pilhaDesfazer = [];
+
+const tela = document.getElementById("tela");
+const ctx = tela.getContext("2d");
+
+function corParaRgb(valor) {
+  if (valor === TRANSPARENTE) return null;
+  const matiz = (valor >> 4) & 0x0F;
+  const luma = (valor >> 1) & 0x07;
+  return PALETA[matiz][luma];
+}
+
+function novaMatriz(l, a, base) {
+  const m = [];
+  for (let y = 0; y < a; y++) {
+    const linha = [];
+    for (let x = 0; x < l; x++) {
+      linha.push(base && base[y] && base[y][x] !== undefined ? base[y][x] : TRANSPARENTE);
+    }
+    m.push(linha);
+  }
+  return m;
+}
+
+function celula() {
+  // Proporcao medida na renderizacao do Stella 7.0: um pixel do TIA
+  // ocupa ~1.92x a altura de uma scanline. Com arte de altura dupla
+  // (1 linha da matriz = 2 scanlines na ROM) a celula fica ~0.96:1.
+  const PAR = 1.92;
+  const modo = document.getElementById("selAspecto").value;
+  const baseH = Math.max(10, Math.min(26, Math.floor(560 / altura)));
+  let razao = 1;
+  if (modo === "1") razao = PAR;
+  else if (modo === "2") razao = PAR / 2;
+  return { w: Math.max(6, Math.round(baseH * razao)), h: baseH };
+}
+
+function desenhar() {
+  const c = celula();
+  const grade = document.getElementById("chkGrade").checked;
+  tela.width = largura * c.w;
+  tela.height = altura * c.h;
+  for (let y = 0; y < altura; y++) {
+    for (let x = 0; x < largura; x++) {
+      const rgb = corParaRgb(pixels[y][x]);
+      if (rgb === null) {
+        // xadrez de transparencia
+        const t = 4;
+        for (let sy = 0; sy < c.h; sy += t) {
+          for (let sx = 0; sx < c.w; sx += t) {
+            ctx.fillStyle = ((sx / t + sy / t) % 2 === 0) ? "#2e3138" : "#262930";
+            ctx.fillRect(x * c.w + sx, y * c.h + sy,
+                         Math.min(t, c.w - sx), Math.min(t, c.h - sy));
+          }
+        }
+      } else {
+        ctx.fillStyle = rgb;
+        ctx.fillRect(x * c.w, y * c.h, c.w, c.h);
+      }
+      if (grade) {
+        ctx.strokeStyle = "rgba(0,0,0,.35)";
+        ctx.strokeRect(x * c.w + .5, y * c.h + .5, c.w - 1, c.h - 1);
+      }
+    }
+  }
+  // separadores dos grupos de 8 colunas (P0/P1/...)
+  ctx.strokeStyle = "rgba(255,255,255,.45)";
+  for (let g = 8; g < largura; g += 8) {
+    ctx.beginPath();
+    ctx.moveTo(g * c.w + .5, 0);
+    ctx.lineTo(g * c.w + .5, tela.height);
+    ctx.stroke();
+  }
+  validar();
+  salvar();
+}
+
+function posicaoDoEvento(ev) {
+  const r = tela.getBoundingClientRect();
+  const c = celula();
+  const x = Math.floor((ev.clientX - r.left) / c.w);
+  const y = Math.floor((ev.clientY - r.top) / c.h);
+  if (x < 0 || y < 0 || x >= largura || y >= altura) return null;
+  return { x, y };
+}
+
+function posicaoClampada(ev) {
+  const r = tela.getBoundingClientRect();
+  const c = celula();
+  const x = Math.floor((ev.clientX - r.left) / c.w);
+  const y = Math.floor((ev.clientY - r.top) / c.h);
+  return {
+    x: Math.max(0, Math.min(largura - 1, x)),
+    y: Math.max(0, Math.min(altura - 1, y)),
+  };
+}
+
+function celulasDaForma() {
+  const cb = document.getElementById("chkPreencher");
+  const preenchido = cb ? cb.checked : false;
+  return gesto.ferramenta
+    .rasterizar(gesto.ancora, gesto.atual, gesto.shift, preenchido)
+    .filter(c => c.x >= 0 && c.y >= 0 && c.x < largura && c.y < altura);
+}
+
+function desenharComFantasma() {
+  desenhar();
+  if (!gesto || gesto.ferramenta.tipo !== "forma") return;
+  const c = celula();
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = corSelecionada === TRANSPARENTE
+    ? "#ffffff" : corParaRgb(corSelecionada);
+  for (const p of celulasDaForma()) {
+    ctx.fillRect(p.x * c.w, p.y * c.h, c.w, c.h);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---- ferramentas ----
+// tipo "traco": aplica na matriz a cada mousemove.
+// tipo "clique": age uma vez no mousedown.
+// tipo "forma" (tarefas 4-5): preview fantasma + gravacao no mouseup.
+// aplicar(p) retorna true se a matriz mudou (o chamador redesenha).
+const FERRAMENTAS = {
+  lapis: {
+    nome: "Lapis", atalho: "P", tipo: "traco",
+    icone: '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+    aplicar(p) { return definirPixel(p.x, p.y, corSelecionada); },
+  },
+  espelho: {
+    nome: "Lapis espelhado", atalho: "V", tipo: "traco",
+    icone: '<path d="M8 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h3"/><path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3"/><path d="M12 20v2"/><path d="M12 14v2"/><path d="M12 8v2"/><path d="M12 2v2"/>',
+    aplicar(p) {
+      const a = definirPixel(p.x, p.y, corSelecionada);
+      const b = definirPixel(largura - 1 - p.x, p.y, corSelecionada);
+      return a || b;
+    },
+  },
+  borracha: {
+    nome: "Borracha", atalho: "E", tipo: "traco",
+    icone: '<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>',
+    aplicar(p) { return definirPixel(p.x, p.y, TRANSPARENTE); },
+  },
+  balde: {
+    nome: "Balde", atalho: "B", tipo: "clique",
+    icone: '<path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z"/>',
+    aplicar(p) { return preencher(p.x, p.y, corSelecionada); },
+  },
+  gotas: {
+    nome: "Conta-gotas", atalho: "I", tipo: "clique",
+    icone: '<path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/>',
+    aplicar(p) { selecionarCor(pixels[p.y][p.x]); return false; },
+  },
+  linha: {
+    nome: "Linha", atalho: "L", tipo: "forma",
+    icone: '<path d="M5 19 19 5"/>',
+    rasterizar: rasterizarLinha,
+  },
+  retangulo: {
+    nome: "Retangulo", atalho: "R", tipo: "forma",
+    icone: '<rect x="4" y="4" width="16" height="16" rx="1"/>',
+    rasterizar: rasterizarRetangulo,
+  },
+  elipse: {
+    nome: "Elipse", atalho: "C", tipo: "forma",
+    icone: '<circle cx="12" cy="12" r="8"/>',
+    rasterizar: rasterizarElipse,
+  },
+};
+
+function definirPixel(x, y, v) {
+  if (x < 0 || y < 0 || x >= largura || y >= altura) return false;
+  if (pixels[y][x] === v) return false;
+  pixels[y][x] = v;
+  return true;
+}
+
+// flood fill BFS (vizinhanca de 4) por valor TIA exato; -1 tambem conta
+function preencher(x0, y0, novo) {
+  const alvo = pixels[y0][x0];
+  if (alvo === novo) return false;
+  const fila = [[x0, y0]];
+  pixels[y0][x0] = novo;
+  let i = 0;
+  while (i < fila.length) {
+    const [x, y] = fila[i++];
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= largura || ny >= altura) continue;
+      if (pixels[ny][nx] !== alvo) continue;
+      pixels[ny][nx] = novo;
+      fila.push([nx, ny]);
+    }
+  }
+  return true;
+}
+
+// ---- rasterizacao de formas (espaco inteiro de celulas) ----
+// com Shift a linha trava no angulo mais proximo entre 0, 45 e 90 graus
+function restringirAngulo(a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const adx = Math.abs(dx), ady = Math.abs(dy);
+  if (adx > 2 * ady) return { x: b.x, y: a.y };
+  if (ady > 2 * adx) return { x: a.x, y: b.y };
+  const d = Math.min(adx, ady);
+  return { x: a.x + Math.sign(dx) * d, y: a.y + Math.sign(dy) * d };
+}
+
+function rasterizarLinha(a, b, shift) {
+  if (shift) b = restringirAngulo(a, b);
+  const pts = [];
+  let x0 = a.x, y0 = a.y;
+  const x1 = b.x, y1 = b.y;
+  const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+  for (;;) {
+    pts.push({ x: x0, y: y0 });
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+  return pts;
+}
+
+// com Shift o lado menor e igualado ao maior, preservando a direcao
+function forcarQuadrado(a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const lado = Math.max(Math.abs(dx), Math.abs(dy));
+  return {
+    x: a.x + (dx < 0 ? -lado : lado),
+    y: a.y + (dy < 0 ? -lado : lado),
+  };
+}
+
+function rasterizarRetangulo(a, b, shift, preenchido) {
+  if (shift) b = forcarQuadrado(a, b);
+  const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+  const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+  const pts = [];
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (preenchido || x === x0 || x === x1 || y === y0 || y === y1) {
+        pts.push({ x, y });
+      }
+    }
+  }
+  return pts;
+}
+
+// teste de inclusao com semieixos folgados em 0.5 (a elipse toca as
+// bordas do bounding box); contorno = celula interna com vizinho-4 fora
+function rasterizarElipse(a, b, shift, preenchido) {
+  if (shift) b = forcarQuadrado(a, b);
+  const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x);
+  const y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const rx = (x1 - x0) / 2 + 0.5, ry = (y1 - y0) / 2 + 0.5;
+  const dentro = (x, y) =>
+    ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+  const pts = [];
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (!dentro(x, y)) continue;
+      const borda = !dentro(x + 1, y) || !dentro(x - 1, y) ||
+                    !dentro(x, y + 1) || !dentro(x, y - 1);
+      if (preenchido || borda) pts.push({ x, y });
+    }
+  }
+  return pts;
+}
+
+function ferramentaDoGesto(ev) {
+  if (ev.altKey) return FERRAMENTAS.gotas;        // conta-gotas temporario
+  if (ev.button === 2) return FERRAMENTAS.borracha; // borracha temporaria
+  return FERRAMENTAS[ferramentaAtiva];
+}
+
+function empilharDesfazer() {
+  pilhaDesfazer.push(JSON.stringify(pixels));
+  if (pilhaDesfazer.length > 100) pilhaDesfazer.shift();
+}
+
+function desfazer() {
+  const anterior = pilhaDesfazer.pop();
+  if (anterior) {
+    pixels = JSON.parse(anterior);
+    largura = pixels[0].length;
+    altura = pixels.length;
+    sincronizarCampos();
+    desenhar();
+  }
+}
+
+// ---- validador da regra dos players do TIA ----
+function validar() {
+  const alvo = document.getElementById("avisos");
+  const problemas = [];
+  const grupos = Math.ceil(largura / 8);
+  // com 32px de largura a ROM usa duas copias de cada player, entao
+  // os grupos 0+2 compartilham a cor do P0 e os 1+3 a do P1
+  const conjuntos = (largura === 32)
+    ? [{ nome: "P0 (colunas 0-7 e 16-23)", grupos: [0, 2] },
+       { nome: "P1 (colunas 8-15 e 24-31)", grupos: [1, 3] }]
+    : Array.from({ length: grupos }, (_, g) => ({ nome: `P${g}`, grupos: [g] }));
+  for (let y = 0; y < altura; y++) {
+    for (const cj of conjuntos) {
+      const cores = new Set();
+      for (const g of cj.grupos) {
+        for (let x = g * 8; x < Math.min((g + 1) * 8, largura); x++) {
+          const v = pixels[y][x];
+          if (v !== TRANSPARENTE) cores.add(v);
+        }
+      }
+      if (cores.size > 1) {
+        const lista = [...cores].map(v => "$" + v.toString(16).toUpperCase().padStart(2, "0")).join(", ");
+        problemas.push(`Linha ${y}, ${cj.nome}: ${cores.size} cores (${lista})`);
+      }
+    }
+  }
+  if (problemas.length === 0) {
+    alvo.innerHTML = '<div class="ok">Nenhum conflito: cada linha usa no maximo 1 cor por player.</div>';
+  } else {
+    alvo.innerHTML = problemas.map(p => `<div class="erro">${p}</div>`).join("") +
+      '<div style="margin-top:6px">Um detalhe extra por linha ainda e possivel com a ball ou os misseis (cores proprias) - resolvido na conversao.</div>';
+  }
+}
+
+// ---- exportacao ----
+function matrizJson() {
+  return JSON.stringify({
+    formato: "testbr-pixel-1",
+    largura, altura,
+    valores: "bytes de cor do TIA; -1 = transparente",
+    pixels
+  });
+}
+
+function gerarDasm() {
+  if (largura % 8 !== 0) return "; ERRO: a largura precisa ser multipla de 8 para exportar em DASM";
+  const grupos = largura / 8;
+  let saida = `; gerado pelo tools/pixel-editor.html - ${largura}x${altura}\n`;
+  const avisos = [];
+  for (let g = 0; g < grupos; g++) {
+    saida += `IcoP${g}`;
+    for (let y = 0; y < altura; y++) {
+      let bits = "";
+      for (let x = g * 8; x < (g + 1) * 8; x++) {
+        bits += pixels[y][x] === TRANSPARENTE ? "0" : "1";
+      }
+      saida += `${y ? "      " : "  "} .byte %${bits}\n`;
+    }
+  }
+  for (let g = 0; g < grupos; g++) {
+    saida += `IcoC${g}`;
+    for (let y = 0; y < altura; y++) {
+      const contagem = new Map();
+      for (let x = g * 8; x < (g + 1) * 8; x++) {
+        const v = pixels[y][x];
+        if (v !== TRANSPARENTE) contagem.set(v, (contagem.get(v) || 0) + 1);
+      }
+      let cor = 0, melhor = 0;
+      for (const [v, n] of contagem) if (n > melhor) { melhor = n; cor = v; }
+      if (contagem.size > 1) avisos.push(`linha ${y} do grupo P${g} tem ${contagem.size} cores; usei a dominante`);
+      saida += `${y ? "      " : "  "} .byte $${cor.toString(16).toUpperCase().padStart(2, "0")}\n`;
+    }
+  }
+  if (largura === 32) {
+    // cores por player por linha (grupos 0+2 e 1+3), mescladas pela
+    // contagem de pixels acesos - formato direto da tela ARTE
+    const pop = b => { let n = 0; for (let i = 0; i < 8; i++) if (b & (1 << i)) n++; return n; };
+    const byteDe = (g, y) => {
+      let bits = 0;
+      for (let x = g * 8; x < (g + 1) * 8; x++) {
+        bits = (bits << 1) | (pixels[y][x] === TRANSPARENTE ? 0 : 1);
+      }
+      return bits;
+    };
+    const corDe = (g, y) => {
+      for (let x = g * 8; x < (g + 1) * 8; x++) {
+        if (pixels[y][x] !== TRANSPARENTE) return pixels[y][x];
+      }
+      return 0;
+    };
+    for (const [nome, ga, gb] of [["ArtCP0", 0, 2], ["ArtCP1", 1, 3]]) {
+      saida += nome;
+      for (let y = 0; y < altura; y++) {
+        const pa = pop(byteDe(ga, y)), pb = pop(byteDe(gb, y));
+        let cor = 0;
+        if (pa || pb) cor = (pa >= pb && pa) ? corDe(ga, y) : corDe(gb, y);
+        saida += `${y ? "      " : " "} .byte $${cor.toString(16).toUpperCase().padStart(2, "0")}\n`;
+      }
+    }
+  }
+  if (avisos.length) saida += "\n; AVISOS:\n" + avisos.map(a => `; - ${a}`).join("\n") + "\n";
+  return saida;
+}
+
+// ---- interface ----
+function selecionarCor(valor) {
+  corSelecionada = valor;
+  document.querySelectorAll("#paleta div").forEach(el =>
+    el.classList.toggle("ativo", parseInt(el.dataset.valor, 10) === valor));
+  const amostra = document.getElementById("amostraCor");
+  const info = document.getElementById("infoCor");
+  if (valor === TRANSPARENTE) {
+    amostra.style.background =
+      "repeating-conic-gradient(#2e3138 0 25%, #262930 0 50%) 0 0/8px 8px";
+    info.textContent = "transparente (-1)";
+  } else {
+    amostra.style.background = corParaRgb(valor);
+    info.textContent = `TIA $${valor.toString(16).toUpperCase().padStart(2, "0")} (${valor}) - ${corParaRgb(valor)}`;
+  }
+}
+
+function montarPaleta() {
+  const alvo = document.getElementById("paleta");
+  for (let matiz = 0; matiz < 16; matiz++) {
+    for (let luma = 0; luma < 8; luma++) {
+      const valor = matiz * 16 + luma * 2;
+      const el = document.createElement("div");
+      el.style.background = PALETA[matiz][luma];
+      el.dataset.valor = valor;
+      el.title = `$${valor.toString(16).toUpperCase().padStart(2, "0")}`;
+      el.addEventListener("click", () => selecionarCor(valor));
+      alvo.appendChild(el);
+    }
+  }
+}
+
+function montarToolbox() {
+  const alvo = document.getElementById("ferramentas");
+  for (const [id, f] of Object.entries(FERRAMENTAS)) {
+    const b = document.createElement("button");
+    b.dataset.ferramenta = id;
+    b.title = `${f.nome} (${f.atalho})`;
+    b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${f.icone}</svg>`;
+    b.addEventListener("click", () => selecionarFerramenta(id));
+    alvo.appendChild(b);
+  }
+}
+
+function selecionarFerramenta(id) {
+  ferramentaAtiva = id;
+  document.querySelectorAll("#ferramentas button").forEach(el =>
+    el.classList.toggle("ativo", el.dataset.ferramenta === id));
+}
+
+function sincronizarCampos() {
+  document.getElementById("inpLargura").value = largura;
+  document.getElementById("inpAltura").value = altura;
+}
+
+function salvar() {
+  try {
+    localStorage.setItem(CHAVE_STORAGE, matrizJson());
+  } catch (e) { /* sem storage disponivel */ }
+}
+
+function restaurar() {
+  try {
+    const bruto = localStorage.getItem(CHAVE_STORAGE);
+    if (!bruto) return false;
+    const dados = JSON.parse(bruto);
+    if (!Array.isArray(dados.pixels)) return false;
+    pixels = dados.pixels;
+    altura = pixels.length;
+    largura = pixels[0].length;
+    return true;
+  } catch (e) { return false; }
+}
+
+// eventos
+tela.addEventListener("mousedown", ev => {
+  ev.preventDefault();
+  const p = posicaoDoEvento(ev);
+  if (!p) return;
+  empilharDesfazer();
+  const f = ferramentaDoGesto(ev);
+  if (f.tipo === "clique") {
+    if (f.aplicar(p)) desenhar();
+    return;
+  }
+  gesto = { ferramenta: f, ancora: p, atual: p, shift: ev.shiftKey };
+  if (f.tipo === "traco") {
+    if (f.aplicar(p)) desenhar();
+  } else {
+    desenharComFantasma();
+  }
+});
+window.addEventListener("mousemove", ev => {
+  if (!gesto) return;
+  if (gesto.ferramenta.tipo === "traco") {
+    const p = posicaoDoEvento(ev);
+    if (p && gesto.ferramenta.aplicar(p)) desenhar();
+  } else {
+    gesto.atual = posicaoClampada(ev);
+    gesto.shift = ev.shiftKey;
+    desenharComFantasma();
+  }
+});
+window.addEventListener("mouseup", () => {
+  if (!gesto) return;
+  if (gesto.ferramenta.tipo === "forma") {
+    for (const p of celulasDaForma()) pixels[p.y][p.x] = corSelecionada;
+    gesto = null;
+    desenhar();
+  } else {
+    gesto = null;
+  }
+});
+tela.addEventListener("contextmenu", ev => ev.preventDefault());
+
+document.getElementById("btnRedim").addEventListener("click", () => {
+  empilharDesfazer();
+  const l = Math.max(8, Math.min(48, parseInt(document.getElementById("inpLargura").value, 10) || 16));
+  const a = Math.max(1, Math.min(64, parseInt(document.getElementById("inpAltura").value, 10) || 24));
+  pixels = novaMatriz(l, a, pixels);
+  largura = l; altura = a;
+  sincronizarCampos();
+  desenhar();
+});
+document.getElementById("selAspecto").addEventListener("change", desenhar);
+document.getElementById("chkGrade").addEventListener("change", desenhar);
+document.getElementById("btnDesfazer").addEventListener("click", desfazer);
+document.getElementById("btnLimpar").addEventListener("click", () => {
+  empilharDesfazer();
+  pixels = novaMatriz(largura, altura);
+  desenhar();
+});
+
+document.getElementById("btnCopiarJson").addEventListener("click", () => {
+  const json = matrizJson();
+  document.getElementById("caixaTexto").value = json;
+  navigator.clipboard && navigator.clipboard.writeText(json);
+});
+document.getElementById("btnBaixarJson").addEventListener("click", () => {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([matrizJson()], { type: "application/json" }));
+  a.download = `pixelart-${largura}x${altura}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById("btnDasm").addEventListener("click", () => {
+  document.getElementById("caixaTexto").value = gerarDasm();
+});
+// ---- gravacao direta na ROM (tools/arte-server.py) ----
+async function chamarServidor(rota, corpo) {
+  const alvo = document.getElementById("statusRom");
+  try {
+    const resp = await fetch(rota, { method: "POST", body: corpo });
+    return await resp.json();
+  } catch (e) {
+    alvo.innerHTML = '<div class="erro">Sem servidor: rode "make editor" e ' +
+      'abra <a href="http://127.0.0.1:2600/">http://127.0.0.1:2600</a></div>';
+    return null;
+  }
+}
+document.getElementById("btnGravarRom").addEventListener("click", async () => {
+  const alvo = document.getElementById("statusRom");
+  if (largura !== 32 || altura !== 32) {
+    alvo.innerHTML = '<div class="erro">a tela ARTE espera arte 32x32</div>';
+    return;
+  }
+  alvo.textContent = "gerando tabelas e compilando...";
+  const r = await chamarServidor("/api/arte", matrizJson());
+  if (!r) return;
+  if (!r.ok) {
+    alvo.innerHTML = '<div class="erro">' +
+      (r.erro || (r.make || []).join("<br>")) + "</div>";
+    return;
+  }
+  alvo.innerHTML = `<div class="ok">ROM atualizada (${r.rom} bytes)` +
+    (r.avisos.length ? `, ${r.avisos.length} pixel(s) aproximado(s):</div>` +
+      r.avisos.map(a => `<div class="erro">${a}</div>`).join("")
+      : ", arte exata</div>");
+});
+document.getElementById("btnAbrirStella").addEventListener("click", async () => {
+  const r = await chamarServidor("/api/run", "");
+  if (r && !r.ok) {
+    document.getElementById("statusRom").innerHTML =
+      `<div class="erro">${r.erro}</div>`;
+  }
+});
+
+document.getElementById("btnCarregar").addEventListener("click", () => {
+  try {
+    const dados = JSON.parse(document.getElementById("caixaTexto").value);
+    if (!Array.isArray(dados.pixels)) throw new Error("faltou o campo pixels");
+    empilharDesfazer();
+    pixels = dados.pixels;
+    altura = pixels.length;
+    largura = pixels[0].length;
+    sincronizarCampos();
+    desenhar();
+  } catch (e) {
+    alert("JSON invalido: " + e.message);
+  }
+});
+window.addEventListener("keydown", ev => {
+  if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") {
+    ev.preventDefault();
+    desfazer();
+    return;
+  }
+  if (ev.key === "Escape" && gesto) {
+    gesto = null;
+    desenhar();
+    return;
+  }
+  const tag = document.activeElement ? document.activeElement.tagName : "";
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+  if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  const tecla = ev.key.toUpperCase();
+  for (const [id, f] of Object.entries(FERRAMENTAS)) {
+    if (f.atalho === tecla) { selecionarFerramenta(id); return; }
+  }
+});
+
+// inicializacao
+montarPaleta();
+montarToolbox();
+selecionarFerramenta(ferramentaAtiva);
+if (!restaurar()) pixels = novaMatriz(largura, altura);
+sincronizarCampos();
+selecionarCor(corSelecionada);
+desenhar();
+</script>
+</body>
+</html>
