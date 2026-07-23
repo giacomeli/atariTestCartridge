@@ -1,9 +1,30 @@
 # TESTBR - Cartucho de diagnóstico para Atari 2600
 
+<p align="center">
+  <img src="promo-assets/testbr-atari-2600-social-preview-1280x640.png"
+       alt="TESTBR: cartucho de diagnóstico open source para Atari 2600, mostrando a tela de cores NTSC no emulador Stella"
+       width="820">
+</p>
+
+<p align="center">
+  <a href="https://github.com/giacomeli/AtariTestCartridgeBR/releases/latest"><img src="https://img.shields.io/github/v/release/giacomeli/AtariTestCartridgeBR" alt="Última release"></a>
+  <img src="https://img.shields.io/github/license/giacomeli/AtariTestCartridgeBR" alt="Licença MIT">
+  <img src="https://img.shields.io/badge/plataforma-Atari%202600%20NTSC-blue" alt="Plataforma Atari 2600 NTSC">
+  <img src="https://img.shields.io/badge/assembly-6502%20%2F%206507-orange" alt="Assembly 6502 / 6507">
+</p>
+
 ROM open source de diagnóstico completo para o console Atari 2600, inspirada
 funcionalmente no Testcart da AtariAge. Escrita do zero em assembly 6502
 (6507), montada com DASM e testável no emulador Stella sem necessidade de
 hardware real.
+
+> **EN** — TESTBR is an open source diagnostic test cartridge (4K ROM) for
+> the Atari 2600 / VCS, written from scratch in 6502 (6507) assembly,
+> assembled with DASM and testable in the Stella emulator. It tests video
+> output and the full NTSC color palette, TIA objects, RIOT RAM, sound,
+> joysticks, keypads, paddles and console switches, and runs on real
+> hardware via Harmony, UnoCart or PlusCart flash cartridges or a 4K
+> EPROM. Documentation is in Brazilian Portuguese.
 
 ## Objetivo
 
