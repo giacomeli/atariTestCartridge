@@ -16,6 +16,9 @@ specs/
 .superpowers/
 tools/__pycache__/
 
+# roms comerciais de referencia (NUNCA versionar - copyright)
+inspiration/
+
 # editor / OS
 .DS_Store
 .vscode/
